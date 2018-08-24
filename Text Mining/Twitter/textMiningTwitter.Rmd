@@ -1,0 +1,304 @@
+---
+title: "Text Mining de Twitter"
+author: "Jose Antonio González Doñas"
+date: "14 de mayo de 2018"
+output: html_document
+---
+
+### Extraer de Twitter los tweets referentes a un hashtag concreto. Explica como has extraído los datos de Twitter: el hashtag que has usado. Pasa los tweets a un dataframe y visualiza la cabeza del data frame.
+
+El procedimiento a seguir es:
+
+1. Crearnos cuenta en Twitter si no tenemos una cuenta previamente, y acceder a la [web para desarrolladores](https://apps.twitter.com). En dicha web, tras crear un proyecto, obtendremos las 4 claves necesarias para obtener información de la plataforma vía API:
+
+* Consumer Key
+* Consumer Secret
+* Access Token
+* Access Token Secret
+
+2. Para obtener los tweets en R, haremos uso de una serie de librerías que debemos instalar y cargar:
+
+```{r eval=F}
+install.packages("httr")
+install.packages("twitteR")
+install.packages("wordcloud")
+install.packages("tm")
+install.packages ("SnowballC")
+install.packages("RColorBrewer")
+
+library("httr")
+library("twitteR")
+library("wordcloud")
+library("tm")
+library("SnowballC")
+library("RColorBrewer")
+
+```
+
+Estos paquetes tienen distintos objetivos, como puede ser interactuar con el propio Twitter, o procesar el contenido, entre otros.
+
+Si no trabajamos desde Windows, como es en mi caso, no hará falta descargar certificado alguno. Para el que si lo haga, tendrá que ejecutar:
+
+```{r eval=F}
+download.file(url = "http://curl.haxx.se/ca/cacert.pem",destfile="cacert.pem")
+```
+
+A continuación, haremos uso de las claves obtenidas anteriormente para configurar el entorno, previamente a la obtención de datos:
+
+```{r eval=F}
+consumer_key <- 'tu consumer key'
+consumer_secret <- 'tu consumer secret' 
+access_token <- 'tu access token'
+access_secret <- 'tu access secret'
+setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
+```
+
+Tras esto, seremos preguntados por el modo a usar (elegiremos modo 1) y podemos comenzar con la obtención de datos. Como vamos a buscar en función de una etiqueta o hashtag (en mi caso, quiero buscar tweets sobre la actualidad de los playoffs de la NBA), y queremos guardarlo en un csv, lo que haremos es realizar la consulta, almacenar el restultado en un dataframe y posteriormente, escribirlo en un csv. IMPORTANTE: como paso previo deberemos instalar y cargar la librería plyr, que contiene a su vez a la función ldply:
+
+```{r eval=F}
+install.packages("plyr")
+library("plyr")
+
+nba.tweets <- searchTwitter("#NBAPlayoffs",n=5000)
+nba.df = ldply(nba.tweets, function(t) t$toDataFrame())
+write.csv(nba.df, file = "nbaPlayoffs.csv")
+```
+
+El valor **n** dentro de la función searchTwitter es el número de tweets que queremos obtener. En mi caso, he llegado a obtener 5000 en una sola consulta, aunque se supone que el número total de ellos a obtener tendrá un límite.
+
+Una vez tenemos los datos en formato csv, podemos volver a recueperarlos (por supuesto, la ruta cambiará dependiendo de cada caso):
+
+```{r}
+library(readr)
+nba.df <- read_csv("nbaPlayoffs.csv")
+head(nba.df)
+```
+
+
+
+### Eliminar del data frame todos aquellos tweets "re-tuiteados" menos de 15 veces.
+
+Para ver cuántas veces ha sido "re-tuiteado" un tweet, tenemos a nuestra disposición una columna llamada retweetCount. Podemos hacerlo de varias formas, pero con which, obtendremos los índices de aquellos que cumplan alguna condición, por ejemplo aquellos con menos de 15 "retuits"
+
+```{r}
+indicesPocoRetuiteados <- which(nba.df$retweetCount < 15)
+length(indicesPocoRetuiteados)
+```
+
+Es decir, tenemos que 1921 de estos tweets han sido "re-tuiteados" menos de 15 veces. Para eliminarlos del conjunto de datos con el que estamos trabajando, tan solo tenemos que ejecutar:
+
+```{r}
+muyRetuiteados <- nba.df[-indicesPocoRetuiteados,]
+head(muyRetuiteados)
+```
+
+Nótese la coma incluida a la hora de eliminar las filas no deseadas del dataframe, ya que cuando trabajamos por ejemplo con vectores no es necesario pero con dataframe si.
+
+### Encontrar los nombres de usuario de las 10 personas que m?s han participado en el tema elegido.
+
+Para encontrar estas personas, podríamos obtener la frecuencia absoluta de los datos por nombre de usuario:
+
+```{r}
+usuarios <- muyRetuiteados$screenName
+frecuencias <- table(usuarios)
+frecuencias[1:100]
+```
+
+Tan solo tenemos que ordenar en orden decreciente y quedanos con los diez primeros:
+
+```{r}
+ordenados <- sort(frecuencias, decreasing = TRUE)
+ordenados[1:10]
+```
+
+
+### Pasar del data frame a un corpus y aplicar las técnicas de text-mining vistas en la práctica anterior para generar un wordcloud. Grabar la imagen obtenida en el wordcloud.
+
+Hacemos la conversión, para ello antes cargamos la librería adecuada si no lo hemos hecho antes:
+
+```{r}
+library(tm)
+corpus = VCorpus(VectorSource(muyRetuiteados)) 
+```
+
+A continuación, preprocesaremos todo. Por ejemplo, puede ser conveniente pasar todo a minúsculas, para que no haya palabras repetidas que se consideren distintas por el siemple hecho de que contenga alguna mayúscula:
+
+```{r}
+library(SnowballC)
+corpus <- tm_map(corpus,tolower)
+```
+
+Como se puede ver, en este punto tenemos un Corpus que contiene elementos en texto plano, por lo que podemos repetir el proceso ya realizado anteriormente con el minado ded texto de pdfs. No detallamos en exceso el procedimiento, ya que no es más que repetir lo hecho ya antes.
+
+De hecho, como en nuestro caso lo único que vamos a hacer es minar texto, podríamos quedarnos con esta información en una variable más apropiada, ya que el Corpus por si mismo en este caso no nos va a aportar muchas ventajas extra. En cualquier caso, continuamos con el procedimiento visto en clase.
+
+**IMPORTANTE: SI APLICAMOS ESTAS FUNCIONES EN UN BUCLE FOR DEL TIPO QUE VAMOS A VER A CONTINUACIÓN, ELIMINAREMOS MUCHA DE LA INFORMACIÓN CONTENIDA EN EL RESTO DEL DATASET, COMO POR EJEMPLO IDENTIFICADORES, FECHAS, CONTADORES DE RETUITS, ENLACES.. ETC. EN DEFINITIVA, ESTARÍAMOS TIRANDO A LA BASURA TODA LA INFORMACIÓN OBTENIDA, LO CUAL NO TENDRÍA MUCHO SENTIDO, YA QUE EL OBJETIVO DE MANTENER UN CORPUS Y NO UN SIMPLE VECTOR DE TUITS ES PRECISAMENTE MANTENER TODA ESA INFORMACION A LO LARGO DEL PROCESO. SIGO EL PROCESO DE LOS APUNTES, DE TODAS FORMAS, PESE A TODO**
+
+```{r}
+for (j in seq(corpus)){
+  corpus[[j]] <- gsub("/"  , " ", corpus[[j]])
+  corpus[[j]] <- gsub("\\|", " ", corpus[[j]])
+}
+```
+
+Tras visualizar el contenido, veo oportuno eliminar la palabra **rt** que hace referencia a un retweet manual y lo cual no aporta ninguna ventaja. 
+
+```{r}
+for (j in seq(corpus)){
+  corpus[[j]] <- gsub("rt", " " ,corpus[[j]])
+}
+```
+
+Cambiando de método, en lugar de usar bucles for, vamos a hacer uso de la librería **Snowball** para eliminar palabras poco significativas (las llamadas stopwords), asi como otro tipo de caracteres no interesantes (especios consecutivos, números...)
+
+```{r}
+corpus <- tm_map(corpus, stemDocument)
+corpus <- tm_map(corpus, removeWords, stopwords())
+corpus <- tm_map(corpus, removeNumbers)
+
+for (j in seq(corpus)){
+  corpus[[j]] <- gsub('\\b[A-Za-z]{1,2}\\b'," ",corpus[[j]])
+  corpus[[j]] <- gsub("kd","durant",corpus[[j]])
+  corpus[[j]] <- gsub("jaytatum","tatum",corpus[[j]])
+  corpus[[j]] <- gsub('([[:punct:]])'," ",corpus[[j]])
+  corpus[[j]] <- gsub("nofollow"," ",corpus[[j]])
+  corpus[[j]] <- gsub("twitter"," ",corpus[[j]])
+  corpus[[j]] <- gsub("twitt"," ",corpus[[j]])
+  corpus[[j]] <- gsub("android"," ",corpus[[j]])
+  corpus[[j]] <- gsub("iphone"," ",corpus[[j]])
+  corpus[[j]] <- gsub("download"," ",corpus[[j]])
+  corpus[[j]] <- gsub("href"," ",corpus[[j]])
+  corpus[[j]] <- gsub("http"," ",corpus[[j]])
+  corpus[[j]] <- gsub("https"," ",corpus[[j]])
+  corpus[[j]] <- gsub("confer","conference",corpus[[j]])
+  corpus[[j]] <- gsub("com","",corpus[[j]])
+  corpus[[j]] <- gsub("fals","false",corpus[[j]])
+  corpus[[j]] <- gsub("nbaplayoff","nbaplayoffs",corpus[[j]])
+  corpus[[j]] <- gsub("nbaplayoffss","nbaplayoffs",corpus[[j]])
+  corpus[[j]] <- gsub("final","finals",corpus[[j]])
+  corpus[[j]] <- gsub("finalss","finals",corpus[[j]])
+  corpus[[j]] <- gsub("cav","cavaliers",corpus[[j]])
+  corpus[[j]] <- gsub("cavs","cavaliers",corpus[[j]])
+  corpus[[j]] <- gsub("nbajp","nbajapan",corpus[[j]])
+  corpus[[j]] <- gsub("nbajpn","nbajapan",corpus[[j]])
+  corpus[[j]] <- gsub("analysi","analysis",corpus[[j]])
+  corpus[[j]] <- gsub("kobebryant","bryant",corpus[[j]])
+  corpus[[j]] <- gsub("jame","lebron",corpus[[j]])
+  corpus[[j]] <- gsub("james","lebron",corpus[[j]])
+  corpus[[j]] <- gsub("rel"," ",corpus[[j]])
+  corpus[[j]] <- gsub("false"," ",corpus[[j]])
+  corpus[[j]] <- gsub("true"," ",corpus[[j]])
+}
+
+corpus <- tm_map(corpus, stripWhitespace)
+```
+
+Uso gsub para eliminar los signos de puntuación porque es mucho mejor que usar removePunctuation, el cual deja muchos símbolos correspondientes a emoticonos. En este punto, tenemos los datos con un nivel apropiado de preprocesado para empezar con la minería propiamente dicha.
+
+Previamente, para evitar problemas con caracteres raros:
+
+```{r}
+corpus <- tm_map(corpus, function(x){iconv(x, "UTF-8", "ASCII", sub = "")})
+corpusPlainText <- tm_map(corpus, PlainTextDocument)
+tdm <- DocumentTermMatrix(corpusPlainText)
+```
+
+Si eliminamos los terminos "esparcidos" nos quedamos sin términos, así que nos quedamos con el tdm original.
+
+```{r}
+termsFreq <- colSums(as.matrix(tdm))
+length(termsFreq)
+termsFreqOrd <- order(termsFreq)
+tail(termsFreq[termsFreqOrd])
+```
+
+
+```{r}
+library(wordcloud)
+set.seed(234)
+dark2 <- brewer.pal(8, "Dark2")
+png("wordcloud.png", width=1280,height=800)
+wordcloud(names(termsFreq), termsFreq,scale=c(8,.2), min.freq=5,max.words=Inf, random.order=FALSE, rot.per=.15, colors=dark2)
+```
+
+El codigo anterior guarda el wordcloud en un fichero, si queremos visualizarlo volemos a jecutar:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+wordcloud(names(termsFreq), termsFreq,scale=c(8,.2), min.freq=5,max.words=Inf, random.order=FALSE, rot.per=.15, colors=dark2)
+```
+
+Podemos cambiar algunos parámetros para obtener un wordcloud distinto:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+wordcloud(names(termsFreq), termsFreq,scale=c(12,.5), min.freq=50,max.words=60, random.order=T, rot.per=.45, colors=brewer.pal(8, "Accent"))
+```
+
+
+### Encontrar usando análisis de frecuencias las palabras más importantes que aparecen en los tweets. Y hacer un plot de las frecuencias más importantes.
+
+Como ya hemos hecho parte del trabajo en el apartado anterior, podemos visualizar las palabras más importanes por frecuencia fácilmente. Por ejemplo, las 6 palabras más usadas son:
+
+```{r}
+tail(termsFreq[termsFreqOrd])
+```
+
+Es decir, en este caso son: 
+  
+  * game
+  * nbaplayoffs
+  * nba
+  * finals
+  * conference
+  * eastern
+  
+Por otro lado, nada originales.
+
+Gráficamente, un modo de ver las palabras más frecuentes de un modo muy simple:
+
+```{r}
+names <- names(termsFreq[termsFreqOrd][length(termsFreq):(length(termsFreq)-10)])
+freqs <- termsFreq[termsFreqOrd][length(termsFreq):(length(termsFreq)-10)]
+barplot(freqs, las = 2, names.arg = names, col ="lightblue", main ="Most frequent words", ylab = "Word frequencies")
+```
+
+
+
+### Para las dos palabras más importantes de vuestro análisis (más frecuentes) encontrar palabras que estén relacionadas con ellas.
+
+Buscaremos las palabras relacionadas con game y con nbaplayoffs.
+
+
+No se qué hay que hacer.
+
+
+### Investigar en la web lo que se llama Term Frequency - Inverse Document Frequency y aplicarlo a este ejercicio.
+
+Term Frequency - Inverse Document Frequency es un estadístico numérico que refleja cómo de importante es una importante una palabra dentro de un texto o corpus. Es una forma de darle el peso o importancia debido a ciertas palabras, ya que no es lo mismo que una palabra aparezca en muchos documentos distintos a que aparezca muchas veces pero solo en muy pocos documentos. Es una medida muy usada por buscadores, ya que en base a ello determina cómo de relevante puede ser un documento, web, etc con respecto una búsqueda dada. Da importancia a palabras que aparecen poco ya que considera que son las que hacen "especial" o relevante al documento en cuestión: las palabras comunes y muy repetidas no hacen que un documento tenga especial relevancia, sino aquellas que son atípicas.
+
+Con Term Frequency - Inverse Document Frequency se consigue descartar palabras que se usan mucho pero no aportan ningún tipo de significado, como son los determinantes: palabras necesarias para una correcta comunicación escrita o hablada pero que no aportan ningún significado.
+
+Aplicar este concepto en R es muy fácil gracias a la librería tm y la función **weightTfIdf**:
+
+```{r}
+itf.terms <- weightTfIdf(tdm, normalize = FALSE)
+```
+
+Si repetimos el proceso anterior, vemos que las palabras más relevantes aunque siguen siendo las mismas, cambian el orden y su peso:
+
+```{r}
+termsFreq <- colSums(as.matrix(itf.terms))
+termsFreqOrd <- order(termsFreq)
+tail(termsFreq[termsFreqOrd])
+names <- names(termsFreq[termsFreqOrd][length(termsFreq):(length(termsFreq)-10)])
+freqs <- termsFreq[termsFreqOrd][length(termsFreq):(length(termsFreq)-10)]
+barplot(freqs, las = 2, names.arg = names, col ="lightblue", main ="Inverse document frequency", ylab = "Inverse document frequencies")
+```
+
+Diría que la idiosincracia de los tweets, donde se escriben muchos pero con pocas palabras, y donde al buscar sobre un mismo tema es muy fácil que se repitan las mismas palabras, hace que el análisis de frecuencia invertida y normal den resultados muy parecidos.
+
+
+##Conclusiones:
+
+* En este ejercicio me he limitado a seguir el procedimiento visto en clase. Sinceramente, para el objetivo que no era más que trabajar con los tuits, sin importarnos quien, cuando, a quién iba dirigido, etc. creo que el procedimiento ha sido más lioso de lo deseable. Quizás hubiera sido mejor tomar los contenidos de los tuits desde un principio y no tener que pelear con una estructura como el corpus a la cual no le he visto la utilidad en este caso. Por falta material de tiempo, y el hecho de tener otras muchas prácticas que hacer de esta asignatura sobre todo, me limito a seguir el guión establecido, pese a que el resultado final no es de mi agrado totalmente.
+
+* En la recolección de tuits, se puede ver como muchos de ellos son retuits, fácilmente detectables ya que empiezan por **RT**. Personalmente no creo que se debieran tener en cuenta, ya que al final tenemos tuits duplicados. Para darles mayor peso, tendría en cuenta la información contenida en la columna que precisamente hace referencia al número de veces que han sido retuiteados. La cuestión es que tras todo el preprocesado de texto, se ve infinitdad de tuits duplicados, lo que hace que cadenas completas de texto aparezcan varias veces sin saber si es contenido original o simplemente copiado y pegado o retuiteado, y a la hora de hacer un estudio en el que la frecuencia de aparición de palabras es tan importante, creo que cosas como estas deberían ser tenidas en cuenta.

@@ -1,0 +1,79 @@
+---
+title: "Eclat algorithm"
+author: "José Antonio González Doñas"
+date: "4/24/2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+##Introducción
+
+La minería de datos, en términos generales, comprende técnicas y algoritmos que permiten obtener patrones de conjuntos de datos de gran tamaño, o lo que es lo mismo, extraer lo que se conocen como **reglas de asociación**, las cuales son usadas en muchos campos. Hay cientos de algoritmos que realizan esa tarea, de distintas formas: minado de patrones frecuentes, **clustering** y clasificación entre otras.
+
+##Eclat
+
+Eclat surgió por la necesidad de obtener nuevas formas de generar *itemsets* frecuentes, esto es, los conjuntos de datos que aparecen con cierta frecuencia dentro de un conjunto de datos (*dataset*). Por supuesto, ya existían varios algoritmos encargados de esto, como por ejmplo *__apriori__*, pero *__eclat__* surge para salvar sus limitaciones: **apriori** necesita leer toda la base de datos una y otra vez para encontrar *itemsets* frecuentes, lo cual es solventado en **eclat** utilizando lo que se conoce como "base de datos vertical", lo que reduce el tiempo de acceso y con ello, el tiempo para enconrar esos conjuntos de datos frecuentes.
+
+**Eclat** hace una búsqueda de elementos en profundidad, de ahí la necesidad de una base de datos vertical. Una base de datos vertical "es aquella en la que la disposición física de los datos se organiza columna a columna en vez de fila a fila. En lugar de estar dispuestos en estructuras de registro horizontal y verticalmente procesados, los datos en una base de datos vertical se disponen en estructuras verticales, conocidos como árboles de predicados, o P-árboles (p-trees), y son procesados horizontalmente"(definición extraída de [este blog](https://basededatosunounivia.wordpress.com/2015/03/14/que-es-una-base-de-datos-vertical/))
+
+Si se partiera de una base de datos horizontal, habría que convertirla a vertical como paso previo. Gracias a esto, la base de datos solo tiene que ser recorrida una sola vez, con el inconveniente de que la confianza no es calculada en este algoritmo. 
+
+Someramente, lo que hace este algoritmo es usar las intersecciones para calcular el soporte de un *itemset* candidato, evitando la generación de subconjuntos que no existen en el árbol prefijo (terminología propia de las bases de datos verticales, precisamente)
+
+
+###Diferencias con algoritmo *apriori*
+
+Ambos algoritmos deben dar el misom resultado para el mismo soporte mínimo y un *dataset* dado, a no ser que exista algún error de implementación. Sin embargo, se considera **apriori** un mejor algoritmo cuando hay muchas transacciones pero pocos items, mientras que **eclat** funciona mejor para un número menor de transacciones pero un mayor número de items.
+
+En cuanto en su ejecución en R, indicar que ambas funciones varían en lo que devuelven:
+
+* **apriori** devuelve las reglas de asociación y los *itemsets* frecuentes
+* **eclat** por su parte solo devuelve los *itemsets* frecuentes, teniendose que usar otra función (ruleinduction()) para obtener las regls de asociación de esos *itemsets* antes obtenidos.
+
+##Ejemplos de uso en R
+
+El algoritmo eclat está disponible en la librería arules
+
+```{r}
+library(arules)
+```
+
+La función *eclat* hace uso de hasta 3 parámetros
+
+```{r eval=FALSE}
+eclat(data, parameter = NULL, control = NULL)
+```
+
+donde:
+
+* **data** es la estructura de datos de la cual queremos extraer los *itemsets*
+* parameter es el conjunto de parámetros en los que basar la búsqueda, como en *apriori*
+* control es otro conjunto de parámetros, referidos al propio algoritmo.
+
+El resultado es un conjunto de *itemsets*
+
+Vamos a mostrar un ejemplo con un conjunto de datos bien conocido: Adult, ya que no necesita preprocesado previo. Los pasos a seguir son:
+
+```{r}
+data("Adult") 
+fsets <- eclat(Adult, parameter = list(supp = 0.5))
+inspect(fsets)
+```
+
+En este caso, tenemos en fsets el conjunto frecuentes de elementos, con un soporte mínimo de 0.5
+
+Si quisieramos obtener un listado de las reglas de asociación tal y como estamos acostumbrados con **apriori** y poder visualizar los parámetros confianza, soporte y *lift*, tan solo tenemos que hacer lo siguiente:
+
+```{r}
+rules <- ruleInduction(fsets)
+inspect(rules)
+```
+
+
+##Fuentes:
+
+* [Publicación Eclat](https://www.researchgate.net/publication/303523871_ECLAT_Algorithm_for_Frequent_Item_sets_Generation)
+* [Artículo en wikibooks.org](https://en.wikibooks.org/wiki/Data_Mining_Algorithms_In_R/Frequent_Pattern_Mining/The_Eclat_Algorithm)
+* [Documentación oficial R](https://www.rdocumentation.org/packages/arules/versions/1.6-1/topics/eclat)
+* [Definición de base de datos vertical](https://basededatosunounivia.wordpress.com/2015/03/14/que-es-una-base-de-datos-vertical/)

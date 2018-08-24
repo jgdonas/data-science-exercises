@@ -1,0 +1,130 @@
+---
+title: "Ejercicio 2 clustering"
+author: "Jose Antonio Gonzalez Doñas"
+date: "21 de mayo de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Importar el datsset unemp.csv y visualizar las 5 primeras filas. Mirar la estructura del dataset. Analizar la información que contiene 
+
+Ejecutamos las intrucciones necesarias para importar el dataset indicado (en este caso incluido en el propio proyecto) y visualizamos su contenido:
+
+```{r}
+library(readr)
+unemp <- read_csv("unemp.csv")
+head(unemp)
+```
+
+Como se puede comprobar, contiene, por cada estado de EEUU, la media y desviación típica (valores numéricos) relacionados con el paro. En este caso, como cada fila es relativa a un estado, tenemos la estructura de la forma idónea para realizar tareas de clustering, al contrario que con el ejercicio anterior donde cada dato estaba organizado por columnas y no por filas y por lo que hubo que trasponer los datos.
+
+Para obtener aún más información del dataset:
+
+```{r}
+class(unemp)
+mode(unemp)
+str(unemp)
+```
+
+Es decir, al estar lños datos almacenados en modo lista, podemos acceder a cada columna mediante el operador $, por ejemplo acceder a los estados será tan fácil como:
+
+```{r}
+unemp$state
+```
+
+###Aplicar k-mean para hacer clustering de los estados según los atributos media y desviación estandar. Agrupar en 3 clusters.
+
+Si deseamos aplicar k-means para clustering según los atributos media y desviación estandar (que son todo lo que hay), tan solo tenemos que indicarle a la función las columnas de esos atributos, para que los tenga en cuenta. En k indicamos el número de clusters deseados:
+
+```{r}
+k <- 3
+set.seed(123)
+unempClusters <- kmeans(unemp[,c("mean","stddev")],centers = k,nstart = 10)
+```
+
+###Ver tamaño de los clusters y los centroides.
+
+Una vez aplicamos la función k-means, en el objeto devuelto tenemos toda la información relevante, entre ella el tamaño de los clusters (en este caso tienen 12, 17 y 21 elementos respectivamente) en el campo **size**:
+
+```{r}
+unempClusters$size
+```
+
+y los centroides, donde se indica, para cada uno de los clusteres obtenidos, cual es en este caso, su media de la media y su media de la desviación estandar, en el campo **centers**:
+ 
+```{r}
+unempClusters$centers
+```
+
+###Ordenar los estados según el cluster y almacenar la información en un data.frame.
+
+Para obtener los índices del cluster ordenados según el cluster, tan solo tenemos que hacer uso de **order**
+
+La pertenencia a un cluster u otro se puede ver fácilmente mediante el campo **cluster**:
+
+```{r}
+unempClusters$cluster
+```
+
+y los índices ordenados serían:
+
+```{r}
+ordered <- order(unempClusters$cluster)
+ordered
+```
+
+Así pues, como los datos originales están dispuestos en un dataframe, obtener los datos tal y como pone el enunciado es muy simple (no se necesita manipulación extra):
+
+```{r}
+unemp.df <- data.frame(state=unemp$state[ordered], cluster= unempClusters$cluster[ordered])
+```
+
+
+###Visualizar en un gráfico la media (en eje X) frente a desviación típica (en eje Y), dibujando con colores según el cluster.
+
+Para visualizar gráficamente la información recogida tras agrupar por clusters, la función **plot** es suficiente. Primero indicamos los datos a reflejar, y seguidamente añadimos la información, en este caso en modo texto, que deseemos:
+
+```{r}
+plot(unemp$mean, unemp$stddev, type="n", xlab="Mean", ylab="Standar deviation")
+text(x=unemp$mean, y=unemp$stddev, labels=unemp$state, col=unempClusters$cluster)
+```
+
+Si comparamos la gráfica con los datos obtenidos en la creación de clusters, vemos que cada estado tiene el color dependiendo de a qué cluster pertenece. Además, vemos como su situación depende de sus valores para media y desviación estandar.
+
+###Calcular las distancias entre las filas del dataset usando como método distancia euclídea.
+
+Para calcular distancia entre elementos de clusters, tenemos a nuestra disposición la funciòn **dist**, que proporciona un array donde nos indica la distancia entre cada par de elementos. Acepta un objeto de tipo data frame sin problema, además le indicaremos explícitamente que deseamos que la distancia sea euclídea, y que no tenga en cuenta solo los datos numéricos, es decir, los nombres de los estados no son relevntes a la hora de calcular distancia, aparte de que daría algún tipo de fallo. Por eso, usaremos los campos **mean** y **stddev** (mostramos a acontinuación solo los datos relativos a los 10 primeros estados, para que se visualize sin problema:
+
+```{r}
+states.distances <- dist(unemp[,c("mean","stddev")], method="euclidean")
+as.matrix(states.distances)[1:10,1:10]
+```
+
+
+###Realizar un dendograma (5 clusters) con bordes verdes alrededor de los clusters
+
+El dendograma es un tipo de gráfico especial para visualizar grupos generados tras aplicar algoritmos propios de *clustering* como **kmeans**. La función a usar es de nuevo **plot**, a la que le pasaremos el resultado de aplicar las distancias antes obtenidas a otra función llamada **hclust**. El proceso por lo tanto sería:
+
+```{r}
+hclusts <- hclust(states.distances, method="ward.D")
+plot(hclusts, main="Unemployment dendogram", labels=unemp$state, cex=.75)
+rect.hclust(hclusts, k = k)
+```
+
+
+###Dar una interpretación del dendograma (usar parámetro merge)
+
+El dendograma es otra forma de visualizar cómo distintos elementos están más o menos relacionados. Así pues, podemos ver que "ND", "NE" y "SD", que pertenecen al mismo subgrupo a nivel 3, estarán más relacionados entre si que con otros estados (si visualizamos la primera gráfica, veremos que efectivamente pertencen al mismo cluster y que además están muy cercanos). Mientras más ramificaciones existan entre dos estados dados, más diferentes se pueden considerar en función a lo que estamos estudiando en este caso, que es estado del paro.
+
+Una interpretación extra se puede conseguir con el parámetro **merge** del objeto que devuelve la función **hclust**:
+
+```{r}
+hclusts$merge
+```
+
+Esta matriz que contiene tantas filas como número de estados menos uno, y 2 columnas, nos describe cómo se realizó la agrupación de elementos que posteriormente se puede mostrar en el dendograma. En cada fila, se indica qué elementos fueron unidos, entendiendo por elemento, en este caso, o bien un estado o bien un grupo de estados ya formado anteriormente. Si por ejemplo, la primera fila es **-9 -30**, significa que en la primera fase, las ramas correspondientes al elemento 9 y 30 fueron unidos en una misma rama para el nivel siguiente. Como ambos son valores negativos, sabemos que lo que ha sido unido (merged) son estados y no agrupaciones de ellos. Por ejemplo, en la fila 15 tenemos **-3 1**, que significa que en esa etapa del algoritmo, fueron unidos el estado con índice -3 con la agrupación 1, que por supuesto se tuvo que formar en alguna interación previa.
+
+En definitiva, esta estructura nos indica cómo se ha elaborado el dendograma, y nos permetiría, con esa información, reconstruirlo sin más información (damos por hecho que los nombres de los estados, que son el otro dato necesario, son accesibles desde otra estrucutura de datos).

@@ -1,0 +1,601 @@
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{unicode=true,
+            pdftitle={Eclat algorithm},
+            pdfauthor={Jos Antonio Gonzlez Doas},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+%%% Use protect on footnotes to avoid problems with footnotes in titles
+\let\rmarkdownfootnote\footnote%
+\def\footnote{\protect\rmarkdownfootnote}
+
+%%% Change title format to be more compact
+\usepackage{titling}
+
+% Create subtitle command for use in maketitle
+\newcommand{\subtitle}[1]{
+  \posttitle{
+    \begin{center}\large#1\end{center}
+    }
+}
+
+\setlength{\droptitle}{-2em}
+  \title{Eclat algorithm}
+  \pretitle{\vspace{\droptitle}\centering\huge}
+  \posttitle{\par}
+  \author{Jos Antonio Gonzlez Doas}
+  \preauthor{\centering\large\emph}
+  \postauthor{\par}
+  \predate{\centering\large\emph}
+  \postdate{\par}
+  \date{4/24/2018}
+
+
+\begin{document}
+\maketitle
+
+\subsection{Introducción}\label{introduccion}
+
+La minería de datos, en términos generales, comprende técnicas y
+algoritmos que permiten obtener patrones de conjuntos de datos de gran
+tamaño, o lo que es lo mismo, extraer lo que se conocen como
+\textbf{reglas de asociación}, las cuales son usadas en muchos campos.
+Hay cientos de algoritmos que realizan esa tarea, de distintas formas:
+minado de patrones frecuentes, \textbf{clustering} y clasificación entre
+otras.
+
+\subsection{Eclat}\label{eclat}
+
+Eclat surgió por la necesidad de obtener nuevas formas de generar
+\emph{itemsets} frecuentes, esto es, los conjuntos de datos que aparecen
+con cierta frecuencia dentro de un conjunto de datos (\emph{dataset}).
+Por supuesto, ya existían varios algoritmos encargados de esto, como por
+ejmplo \emph{\textbf{apriori}}, pero \emph{\textbf{eclat}} surge para
+salvar sus limitaciones: \textbf{apriori} necesita leer toda la base de
+datos una y otra vez para encontrar \emph{itemsets} frecuentes, lo cual
+es solventado en \textbf{eclat} utilizando lo que se conoce como ``base
+de datos vertical'', lo que reduce el tiempo de acceso y con ello, el
+tiempo para enconrar esos conjuntos de datos frecuentes.
+
+\textbf{Eclat} hace una búsqueda de elementos en profundidad, de ahí la
+necesidad de una base de datos vertical. Una base de datos vertical ``es
+aquella en la que la disposición física de los datos se organiza columna
+a columna en vez de fila a fila. En lugar de estar dispuestos en
+estructuras de registro horizontal y verticalmente procesados, los datos
+en una base de datos vertical se disponen en estructuras verticales,
+conocidos como árboles de predicados, o P-árboles (p-trees), y son
+procesados horizontalmente''(definición extraída de
+\href{https://basededatosunounivia.wordpress.com/2015/03/14/que-es-una-base-de-datos-vertical/}{este
+blog})
+
+Si se partiera de una base de datos horizontal, habría que convertirla a
+vertical como paso previo. Gracias a esto, la base de datos solo tiene
+que ser recorrida una sola vez, con el inconveniente de que la confianza
+no es calculada en este algoritmo.
+
+Someramente, lo que hace este algoritmo es usar las intersecciones para
+calcular el soporte de un \emph{itemset} candidato, evitando la
+generación de subconjuntos que no existen en el árbol prefijo
+(terminología propia de las bases de datos verticales, precisamente)
+
+\subsubsection{\texorpdfstring{Diferencias con algoritmo
+\emph{apriori}}{Diferencias con algoritmo apriori}}\label{diferencias-con-algoritmo-apriori}
+
+Ambos algoritmos deben dar el misom resultado para el mismo soporte
+mínimo y un \emph{dataset} dado, a no ser que exista algún error de
+implementación. Sin embargo, se considera \textbf{apriori} un mejor
+algoritmo cuando hay muchas transacciones pero pocos items, mientras que
+\textbf{eclat} funciona mejor para un número menor de transacciones pero
+un mayor número de items.
+
+En cuanto en su ejecución en R, indicar que ambas funciones varían en lo
+que devuelven:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{apriori} devuelve las reglas de asociación y los
+  \emph{itemsets} frecuentes
+\item
+  \textbf{eclat} por su parte solo devuelve los \emph{itemsets}
+  frecuentes, teniendose que usar otra función (ruleinduction()) para
+  obtener las regls de asociación de esos \emph{itemsets} antes
+  obtenidos.
+\end{itemize}
+
+\subsection{Ejemplos de uso en R}\label{ejemplos-de-uso-en-r}
+
+El algoritmo eclat está disponible en la librería arules
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(arules)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Loading required package: Matrix
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'arules'
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:base':
+## 
+##     abbreviate, write
+\end{verbatim}
+
+La función \emph{eclat} hace uso de hasta 3 parámetros
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{eclat}\NormalTok{(data, }\DataTypeTok{parameter =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{control =} \OtherTok{NULL}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+donde:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{data} es la estructura de datos de la cual queremos extraer
+  los \emph{itemsets}
+\item
+  parameter es el conjunto de parámetros en los que basar la búsqueda,
+  como en \emph{apriori}
+\item
+  control es otro conjunto de parámetros, referidos al propio algoritmo.
+\end{itemize}
+
+El resultado es un conjunto de \emph{itemsets}
+
+Vamos a mostrar un ejemplo con un conjunto de datos bien conocido:
+Adult, ya que no necesita preprocesado previo. Los pasos a seguir son:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{data}\NormalTok{(}\StringTok{"Adult"}\NormalTok{) }
+\NormalTok{fsets <-}\StringTok{ }\KeywordTok{eclat}\NormalTok{(Adult, }\DataTypeTok{parameter =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{supp =} \FloatTok{0.5}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Eclat
+## 
+## parameter specification:
+##  tidLists support minlen maxlen            target   ext
+##     FALSE     0.5      1     10 frequent itemsets FALSE
+## 
+## algorithmic control:
+##  sparse sort verbose
+##       7   -2    TRUE
+## 
+## Absolute minimum support count: 24421 
+## 
+## create itemset ... 
+## set transactions ...[115 item(s), 48842 transaction(s)] done [0.04s].
+## sorting and recoding items ... [9 item(s)] done [0.00s].
+## creating bit matrix ... [9 row(s), 48842 column(s)] done [0.01s].
+## writing  ... [49 set(s)] done [0.00s].
+## Creating S4 object  ... done [0.00s].
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{inspect}\NormalTok{(fsets)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##      items                            support count
+## [1]  {capital-gain=None,                           
+##       capital-loss=None,                           
+##       hours-per-week=Full-time}     0.5191638 25357
+## [2]  {capital-loss=None,                           
+##       hours-per-week=Full-time}     0.5606650 27384
+## [3]  {capital-gain=None,                           
+##       hours-per-week=Full-time}     0.5435895 26550
+## [4]  {hours-per-week=Full-time,                    
+##       native-country=United-States} 0.5179559 25298
+## [5]  {race=White,                                  
+##       sex=Male,                                    
+##       capital-loss=None,                           
+##       native-country=United-States} 0.5113632 24976
+## [6]  {race=White,                                  
+##       sex=Male,                                    
+##       capital-loss=None}            0.5564268 27177
+## [7]  {race=White,                                  
+##       sex=Male,                                    
+##       capital-gain=None}            0.5313050 25950
+## [8]  {race=White,                                  
+##       sex=Male,                                    
+##       native-country=United-States} 0.5415421 26450
+## [9]  {sex=Male,                                    
+##       capital-gain=None,                           
+##       capital-loss=None,                           
+##       native-country=United-States} 0.5084149 24832
+## [10] {sex=Male,                                    
+##       capital-loss=None,                           
+##       native-country=United-States} 0.5661316 27651
+## [11] {sex=Male,                                    
+##       capital-gain=None,                           
+##       native-country=United-States} 0.5406003 26404
+## [12] {sex=Male,                                    
+##       capital-gain=None,                           
+##       capital-loss=None}            0.5696941 27825
+## [13] {sex=Male,                                    
+##       capital-loss=None}            0.6331027 30922
+## [14] {sex=Male,                                    
+##       capital-gain=None}            0.6050735 29553
+## [15] {sex=Male,                                    
+##       native-country=United-States} 0.5983170 29223
+## [16] {race=White,                                  
+##       sex=Male}                     0.5883256 28735
+## [17] {workclass=Private,                           
+##       race=White,                                  
+##       capital-loss=None,                           
+##       native-country=United-States} 0.5181401 25307
+## [18] {workclass=Private,                           
+##       race=White,                                  
+##       capital-gain=None,                           
+##       capital-loss=None}            0.5204742 25421
+## [19] {workclass=Private,                           
+##       race=White,                                  
+##       capital-loss=None}            0.5674829 27717
+## [20] {workclass=Private,                           
+##       race=White,                                  
+##       capital-gain=None}            0.5472339 26728
+## [21] {workclass=Private,                           
+##       race=White,                                  
+##       native-country=United-States} 0.5433848 26540
+## [22] {workclass=Private,                           
+##       capital-gain=None,                           
+##       capital-loss=None,                           
+##       native-country=United-States} 0.5414807 26447
+## [23] {workclass=Private,                           
+##       capital-loss=None,                           
+##       native-country=United-States} 0.5897179 28803
+## [24] {workclass=Private,                           
+##       capital-gain=None,                           
+##       native-country=United-States} 0.5689570 27789
+## [25] {workclass=Private,                           
+##       capital-gain=None,                           
+##       capital-loss=None}            0.6111748 29851
+## [26] {workclass=Private,                           
+##       capital-loss=None}            0.6639982 32431
+## [27] {workclass=Private,                           
+##       capital-gain=None}            0.6413742 31326
+## [28] {workclass=Private,                           
+##       native-country=United-States} 0.6171942 30145
+## [29] {workclass=Private,                           
+##       race=White}                   0.5942427 29024
+## [30] {race=White,                                  
+##       capital-gain=None,                           
+##       capital-loss=None,                           
+##       native-country=United-States} 0.6803980 33232
+## [31] {race=White,                                  
+##       capital-loss=None,                           
+##       native-country=United-States} 0.7490480 36585
+## [32] {race=White,                                  
+##       capital-gain=None,                           
+##       native-country=United-States} 0.7194628 35140
+## [33] {race=White,                                  
+##       capital-gain=None,                           
+##       capital-loss=None}            0.7404283 36164
+## [34] {race=White,                                  
+##       capital-loss=None}            0.8136849 39742
+## [35] {race=White,                                  
+##       capital-gain=None}            0.7817862 38184
+## [36] {race=White,                                  
+##       native-country=United-States} 0.7881127 38493
+## [37] {capital-gain=None,                           
+##       capital-loss=None,                           
+##       native-country=United-States} 0.7793702 38066
+## [38] {capital-loss=None,                           
+##       native-country=United-States} 0.8548380 41752
+## [39] {capital-gain=None,                           
+##       native-country=United-States} 0.8219565 40146
+## [40] {capital-gain=None,                           
+##       capital-loss=None}            0.8706646 42525
+## [41] {capital-loss=None}            0.9532779 46560
+## [42] {capital-gain=None}            0.9173867 44807
+## [43] {native-country=United-States} 0.8974243 43832
+## [44] {race=White}                   0.8550428 41762
+## [45] {workclass=Private}            0.6941976 33906
+## [46] {sex=Male}                     0.6684820 32650
+## [47] {hours-per-week=Full-time}     0.5850907 28577
+## [48] {income=small}                 0.5061218 24720
+## [49] {age=Middle-aged}              0.5051185 24671
+\end{verbatim}
+
+En este caso, tenemos en fsets el conjunto frecuentes de elementos, con
+un soporte mínimo de 0.5
+
+Si quisieramos obtener un listado de las reglas de asociación tal y como
+estamos acostumbrados con \textbf{apriori} y poder visualizar los
+parámetros confianza, soporte y \emph{lift}, tan solo tenemos que hacer
+lo siguiente:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{rules <-}\StringTok{ }\KeywordTok{ruleInduction}\NormalTok{(fsets)}
+\KeywordTok{inspect}\NormalTok{(rules)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##      lhs                               rhs                              support confidence      lift
+## [1]  {capital-loss=None,                                                                            
+##       hours-per-week=Full-time}     => {capital-gain=None}            0.5191638  0.9259787 1.0093657
+## [2]  {capital-gain=None,                                                                            
+##       hours-per-week=Full-time}     => {capital-loss=None}            0.5191638  0.9550659 1.0018756
+## [3]  {hours-per-week=Full-time}     => {capital-loss=None}            0.5606650  0.9582531 1.0052191
+## [4]  {hours-per-week=Full-time}     => {capital-gain=None}            0.5435895  0.9290688 1.0127342
+## [5]  {hours-per-week=Full-time}     => {native-country=United-States} 0.5179559  0.8852574 0.9864423
+## [6]  {sex=Male,                                                                                     
+##       capital-loss=None,                                                                            
+##       native-country=United-States} => {race=White}                   0.5113632  0.9032585 1.0563898
+## [7]  {race=White,                                                                                   
+##       sex=Male,                                                                                     
+##       native-country=United-States} => {capital-loss=None}            0.5113632  0.9442722 0.9905529
+## [8]  {race=White,                                                                                   
+##       sex=Male,                                                                                     
+##       capital-loss=None}            => {native-country=United-States} 0.5113632  0.9190124 1.0240556
+## [9]  {sex=Male,                                                                                     
+##       capital-loss=None}            => {race=White}                   0.5564268  0.8788888 1.0278887
+## [10] {race=White,                                                                                   
+##       sex=Male}                     => {capital-loss=None}            0.5564268  0.9457804 0.9921350
+## [11] {sex=Male,                                                                                     
+##       capital-gain=None}            => {race=White}                   0.5313050  0.8780834 1.0269468
+## [12] {race=White,                                                                                   
+##       sex=Male}                     => {capital-gain=None}            0.5313050  0.9030799 0.9844048
+## [13] {sex=Male,                                                                                     
+##       native-country=United-States} => {race=White}                   0.5415421  0.9051090 1.0585540
+## [14] {race=White,                                                                                   
+##       sex=Male}                     => {native-country=United-States} 0.5415421  0.9204803 1.0256912
+## [15] {sex=Male,                                                                                     
+##       capital-loss=None,                                                                            
+##       native-country=United-States} => {capital-gain=None}            0.5084149  0.8980507 0.9789228
+## [16] {sex=Male,                                                                                     
+##       capital-gain=None,                                                                            
+##       native-country=United-States} => {capital-loss=None}            0.5084149  0.9404636 0.9865576
+## [17] {sex=Male,                                                                                     
+##       capital-gain=None,                                                                            
+##       capital-loss=None}            => {native-country=United-States} 0.5084149  0.8924349 0.9944402
+## [18] {sex=Male,                                                                                     
+##       native-country=United-States} => {capital-loss=None}            0.5661316  0.9462068 0.9925823
+## [19] {sex=Male,                                                                                     
+##       capital-loss=None}            => {native-country=United-States} 0.5661316  0.8942177 0.9964268
+## [20] {sex=Male,                                                                                     
+##       native-country=United-States} => {capital-gain=None}            0.5406003  0.9035349 0.9849008
+## [21] {sex=Male,                                                                                     
+##       capital-gain=None}            => {native-country=United-States} 0.5406003  0.8934457 0.9955666
+## [22] {sex=Male,                                                                                     
+##       capital-loss=None}            => {capital-gain=None}            0.5696941  0.8998448 0.9808784
+## [23] {sex=Male,                                                                                     
+##       capital-gain=None}            => {capital-loss=None}            0.5696941  0.9415288 0.9876750
+## [24] {sex=Male}                     => {capital-loss=None}            0.6331027  0.9470750 0.9934931
+## [25] {sex=Male}                     => {capital-gain=None}            0.6050735  0.9051455 0.9866565
+## [26] {sex=Male}                     => {native-country=United-States} 0.5983170  0.8950383 0.9973412
+## [27] {sex=Male}                     => {race=White}                   0.5883256  0.8800919 1.0292957
+## [28] {workclass=Private,                                                                            
+##       capital-loss=None,                                                                            
+##       native-country=United-States} => {race=White}                   0.5181401  0.8786238 1.0275787
+## [29] {workclass=Private,                                                                            
+##       race=White,                                                                                   
+##       native-country=United-States} => {capital-loss=None}            0.5181401  0.9535418 1.0002768
+## [30] {workclass=Private,                                                                            
+##       race=White,                                                                                   
+##       capital-loss=None}            => {native-country=United-States} 0.5181401  0.9130498 1.0174114
+## [31] {workclass=Private,                                                                            
+##       capital-gain=None,                                                                            
+##       capital-loss=None}            => {race=White}                   0.5204742  0.8515963 0.9959692
+## [32] {workclass=Private,                                                                            
+##       race=White,                                                                                   
+##       capital-loss=None}            => {capital-gain=None}            0.5204742  0.9171628 0.9997559
+## [33] {workclass=Private,                                                                            
+##       race=White,                                                                                   
+##       capital-gain=None}            => {capital-loss=None}            0.5204742  0.9511000 0.9977153
+## [34] {workclass=Private,                                                                            
+##       capital-loss=None}            => {race=White}                   0.5674829  0.8546452 0.9995351
+## [35] {workclass=Private,                                                                            
+##       race=White}                   => {capital-loss=None}            0.5674829  0.9549683 1.0017732
+## [36] {workclass=Private,                                                                            
+##       capital-gain=None}            => {race=White}                   0.5472339  0.8532210 0.9978693
+## [37] {workclass=Private,                                                                            
+##       race=White}                   => {capital-gain=None}            0.5472339  0.9208931 1.0038221
+## [38] {workclass=Private,                                                                            
+##       native-country=United-States} => {race=White}                   0.5433848  0.8804113 1.0296693
+## [39] {workclass=Private,                                                                            
+##       race=White}                   => {native-country=United-States} 0.5433848  0.9144157 1.0189334
+## [40] {workclass=Private,                                                                            
+##       capital-loss=None,                                                                            
+##       native-country=United-States} => {capital-gain=None}            0.5414807  0.9182030 1.0008898
+## [41] {workclass=Private,                                                                            
+##       capital-gain=None,                                                                            
+##       native-country=United-States} => {capital-loss=None}            0.5414807  0.9517075 0.9983526
+## [42] {workclass=Private,                                                                            
+##       capital-gain=None,                                                                            
+##       capital-loss=None}            => {native-country=United-States} 0.5414807  0.8859670 0.9872330
+## [43] {workclass=Private,                                                                            
+##       native-country=United-States} => {capital-loss=None}            0.5897179  0.9554818 1.0023119
+## [44] {workclass=Private,                                                                            
+##       capital-loss=None}            => {native-country=United-States} 0.5897179  0.8881317 0.9896452
+## [45] {workclass=Private,                                                                            
+##       native-country=United-States} => {capital-gain=None}            0.5689570  0.9218444 1.0048592
+## [46] {workclass=Private,                                                                            
+##       capital-gain=None}            => {native-country=United-States} 0.5689570  0.8870906 0.9884851
+## [47] {workclass=Private,                                                                            
+##       capital-loss=None}            => {capital-gain=None}            0.6111748  0.9204465 1.0033354
+## [48] {workclass=Private,                                                                            
+##       capital-gain=None}            => {capital-loss=None}            0.6111748  0.9529145 0.9996188
+## [49] {workclass=Private}            => {capital-loss=None}            0.6639982  0.9564974 1.0033773
+## [50] {workclass=Private}            => {capital-gain=None}            0.6413742  0.9239073 1.0071078
+## [51] {workclass=Private}            => {native-country=United-States} 0.6171942  0.8890757 0.9906971
+## [52] {workclass=Private}            => {race=White}                   0.5942427  0.8560137 1.0011355
+## [53] {capital-gain=None,                                                                            
+##       capital-loss=None,                                                                            
+##       native-country=United-States} => {race=White}                   0.6803980  0.8730100 1.0210133
+## [54] {race=White,                                                                                   
+##       capital-loss=None,                                                                            
+##       native-country=United-States} => {capital-gain=None}            0.6803980  0.9083504 0.9901500
+## [55] {race=White,                                                                                   
+##       capital-gain=None,                                                                            
+##       native-country=United-States} => {capital-loss=None}            0.6803980  0.9457029 0.9920537
+## [56] {race=White,                                                                                   
+##       capital-gain=None,                                                                            
+##       capital-loss=None}            => {native-country=United-States} 0.6803980  0.9189249 1.0239581
+## [57] {capital-loss=None,                                                                            
+##       native-country=United-States} => {race=White}                   0.7490480  0.8762454 1.0247972
+## [58] {race=White,                                                                                   
+##       native-country=United-States} => {capital-loss=None}            0.7490480  0.9504325 0.9970152
+## [59] {race=White,                                                                                   
+##       capital-loss=None}            => {native-country=United-States} 0.7490480  0.9205626 1.0257830
+## [60] {capital-gain=None,                                                                            
+##       native-country=United-States} => {race=White}                   0.7194628  0.8753051 1.0236975
+## [61] {race=White,                                                                                   
+##       native-country=United-States} => {capital-gain=None}            0.7194628  0.9128933 0.9951019
+## [62] {race=White,                                                                                   
+##       capital-gain=None}            => {native-country=United-States} 0.7194628  0.9202807 1.0254689
+## [63] {capital-gain=None,                                                                            
+##       capital-loss=None}            => {race=White}                   0.7404283  0.8504174 0.9945905
+## [64] {race=White,                                                                                   
+##       capital-loss=None}            => {capital-gain=None}            0.7404283  0.9099693 0.9919147
+## [65] {race=White,                                                                                   
+##       capital-gain=None}            => {capital-loss=None}            0.7404283  0.9470983 0.9935175
+## [66] {capital-loss=None}            => {race=White}                   0.8136849  0.8535653 0.9982720
+## [67] {race=White}                   => {capital-loss=None}            0.8136849  0.9516307 0.9982720
+## [68] {capital-gain=None}            => {race=White}                   0.7817862  0.8521883 0.9966616
+## [69] {race=White}                   => {capital-gain=None}            0.7817862  0.9143240 0.9966616
+## [70] {native-country=United-States} => {race=White}                   0.7881127  0.8781940 1.0270761
+## [71] {race=White}                   => {native-country=United-States} 0.7881127  0.9217231 1.0270761
+## [72] {capital-loss=None,                                                                            
+##       native-country=United-States} => {capital-gain=None}            0.7793702  0.9117168 0.9938195
+## [73] {capital-gain=None,                                                                            
+##       native-country=United-States} => {capital-loss=None}            0.7793702  0.9481891 0.9946618
+## [74] {capital-gain=None,                                                                            
+##       capital-loss=None}            => {native-country=United-States} 0.7793702  0.8951440 0.9974590
+## [75] {native-country=United-States} => {capital-loss=None}            0.8548380  0.9525461 0.9992323
+## [76] {capital-loss=None}            => {native-country=United-States} 0.8548380  0.8967354 0.9992323
+## [77] {native-country=United-States} => {capital-gain=None}            0.8219565  0.9159062 0.9983862
+## [78] {capital-gain=None}            => {native-country=United-States} 0.8219565  0.8959761 0.9983862
+## [79] {capital-loss=None}            => {capital-gain=None}            0.8706646  0.9133376 0.9955863
+## [80] {capital-gain=None}            => {capital-loss=None}            0.8706646  0.9490705 0.9955863
+\end{verbatim}
+
+\subsection{Fuentes:}\label{fuentes}
+
+\begin{itemize}
+\tightlist
+\item
+  \href{https://www.researchgate.net/publication/303523871_ECLAT_Algorithm_for_Frequent_Item_sets_Generation}{Publicación
+  Eclat}
+\item
+  \href{https://en.wikibooks.org/wiki/Data_Mining_Algorithms_In_R/Frequent_Pattern_Mining/The_Eclat_Algorithm}{Artículo
+  en wikibooks.org}
+\item
+  \href{https://www.rdocumentation.org/packages/arules/versions/1.6-1/topics/eclat}{Documentación
+  oficial R}
+\item
+  \href{https://basededatosunounivia.wordpress.com/2015/03/14/que-es-una-base-de-datos-vertical/}{Definición
+  de base de datos vertical}
+\end{itemize}
+
+
+\end{document}

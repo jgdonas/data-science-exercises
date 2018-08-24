@@ -1,0 +1,292 @@
+---
+title: "Minado de texto a partir de pdfs"
+author: "Jose Antonio Gonzalez Doñas"
+date: "11 de mayo de 2018"
+output: html_document
+---
+
+
+## *Text mining* a partir de archivos PDF
+
+Vamos a explicar en este documento, paso a paso, cómo realizar minería de datos a partir de la información contenida en documentos pdf. Los pasos a seguir serán:
+
+ 1. Obtener textos de los ficheros pdf
+ 2. Preprocesamiento de textos
+ 3. Minería de texto
+ 4. Análisis gráfico de los resultados
+ 
+**Antes de comenzar, indicar que este trabajo ha sido realizado en entorno Linux, porque destacaré los posibles problemas y particularidades que peuda surgir en este caso, y de igual manera obviaré los que puedan surgir en otros sitemas operativos, aunque se conoce que dependiendo del caso, una u otras librerías darán problema.**
+
+> ## 1. Obtener textos de los ficheros pdf
+
+Partiendo de un conjunto de *pdfs*, preferiblemente contenidos dentro de un directorio, vamos a extraer su contenido para poder manipularlo posteriormente.
+
+Para ello, tenemos que instalar y cargar la librería **tm** (cuyo nombre viene de *text mining*), así como **Rcampdf** y **pdftools**, que será necesario posteriormente:
+
+```{r}
+library(tm)
+library(Rcampdf)
+library(pdftools)
+```
+
+Por cierto, para la instalación de **pdftools** en linux, es posible la instalación prevía de algún paquete en el sistema operativo (en mi caso he tenido que instsalar libpoppler-cpp-dev)
+
+A continuación, definimos el directorio donde se encuentran dichos pdfs, mediante el comando apropiado (el directorio cambiará dependiendo de cada caso, como es de esperar). En mi caso, como he situado los pdfs dentro del propio proyecto de R, uso la ruta relativa, que es más corta y simple:
+
+```{r}
+directorio.pdfs <- file.path("./", "pdfs")
+dir(directorio.pdfs)
+```
+
+A continuación, podemos leer el contenido de los ficheros pdf, e introducirlo en una variable:
+
+```{r}
+list.pdfs <- DirSource(directorio.pdfs)
+pdfs <- Corpus(DirSource(directorio.pdfs))
+Rpdf <- readPDF(control = list(text = "-layout"))
+docs <- Corpus(URISource(list.pdfs), readerControl = list(reader = Rpdf))
+```
+
+Puede que obtengamos algunos avisos tras ejecutar estos comandos, pero podemos obviarlos.
+
+Veamos qué tenemos ahora mismo en nuestra variable docs:
+
+```{r}
+summary(docs)
+```
+
+En este punto, tenemos nuestros ficheros pdf en modo texto plano en una estructura de datos especial llamada **VCorpus** que a su vez es de tipo Corpus con la particularidad de que es volátil, es decir, está totalmente almacenado en memoria, y por lo tanto todo cambio que le hagamos se realizará solo en memoria, lo que significa que no habrá persistencia de los mismos tras terminar y dichos cambios se perderán al terminar de trabajar con R. Además, podemos acceder a sus elementos como si fuera una lista:
+
+```{r}
+class(docs)
+mode(docs)
+```
+
+Sin entrar en muchos detalles, un Corpus es una colección de documentos que contienen texto (en lenguaje natural). Es usado por el paquete tm.
+
+> ## 2. Preprocesamiento de textos  
+
+Una vez tenemos los textos, que es lo que nos interesa, vamos a preprocesarlos de manera que eliminemos palabras que no nos interesan y nos quedemos con la información relevante. De igual manera, eliminaremos signos de puntuación, y haremos que palabras que se pueden expresar de distintas formas aparezcan como términos diferentes (por ejemplo, *thanks*, *thank you*, *ty*, etc).
+
+Antes de nada, podemos inspeccionar alguno de los documentos para tener conocimiento de qué tenemos entre manos y qué podemos encontrarnos. Por ejemplo, la segunda página del primer pdf tiene como contenido el siguiente texto este documento en total tiene 9 páginas, pero mostrarlas todas hace que este documento explicativo se agrande demasiado):
+
+```{r}
+docs[1][["16122013_Edition22_DN.pdf"]][["content"]][2]
+```
+
+que como podemos ver, está formado texto en inglés y por supuesto contiene todo tipo de signos de puntuación, retornos de carro, enlaces a internet, tabuladores, valores numéricos, etc.
+
+Ahora empezaríamos con un proceso totalmente iterativo en el que poco a poco, iríamos eliminando términos no interesante, transformando palabras, etc hasta quedarnos con un conjunto de palabras realmente significativas para cada documento.
+
+Empezaremos eliminando algunos caracteres mediante un bucle que que aplique esta transformación a todos los documentos haciendo sustituciones mediante función gsub que sustituye todas las apariciones del patrón indicado por un espacio en blanco, es decir, por lo que indiquemos como segundo parámetro:
+
+```{r}
+for (j in seq(docs)){ 
+  docs[[j]] <- gsub("/"," ",docs[[j]])
+  docs[[j]] <- gsub("@"," ",docs[[j]])
+  docs[[j]] <- gsub("\\|", " ", docs[[j]])
+}
+ 
+docs[[1]][2]
+```
+
+Para continuar con el preprocesado, usaremos además una librería llamada **SnowballC** que nos permitirá eliminar palabras poco significativas, como artículos, determinantes, así como códigos que puedan aparecer en los textos debido a la transformación de pdf a texto:
+
+```{r}
+library (SnowballC)
+```
+
+Esta librería contiene un listado de palabras, según el idioma, a eliminar. Por ejemplo, para el idioma en el que están escritos estos documentos, que es el inglés, las palabras a eliminar, llamadas *stopwords*, son:
+
+```{r}
+stopwords()
+```
+
+Si quisieramos añadir más palabras o eliminarlas, tan sólo tendríamos que manipular este conjunto de palabras como cualquier otro vector. 
+En principio, si usamos este conjunto de palabras tal cual, la transformación a aplicar a los documentos sería:
+
+```{r}
+docs <- tm_map(docs,tolower)
+docs <- tm_map(docs, removeWords, stopwords())
+```
+
+No obstante, previamente hemos todas las palabras a minúsculas, ya que esta función de sustitución es sensible a mayúsculas.
+
+Como se puede ver, en este caso en lugar de un bucle for, hemos hecho uso de la función tm_map, que al estilo de las funciones de la familia apply, aplica la función removeWords a todos los documentos.
+
+Nuestro texto de referencia, tras este paso se ha convertido en:
+
+```{r}
+ docs[[1]][2]
+```
+
+Continuamos con el preprocesamiento, eliminando números, signos de puntuación, y espacios en blanco consecutivos:
+
+```{r}
+docs <- tm_map(docs,removeNumbers)
+docs <- tm_map(docs,removePunctuation)
+docs <- tm_map(docs, stripWhitespace)
+docs[[1]][2]
+```
+
+En este punto, el texto parece bastante limpio, al menos comparado con el original. Pero no vamos a dejarlo aún así: se ve que hay algunos símbolos extraños, guiones, apóstrofes... continuaremos preprocesando todavía.
+
+En cuanto a símbolos, vamos a eliminar '–', '•', y '"' que son los que puedo ver a simple vista
+
+```{r}
+docs <- tm_map(docs, removeWords, c("–", "•", "\""))
+docs <- tm_map(docs, stripWhitespace)
+docs[[1]][2]
+```
+
+Como se ve que no ha funcionado del todo, podríamos aplicar la función gsub, que de forma similar al **removePunctuation()** permite eliminar signos de puntuación mediante un comando muy simple:
+
+```{r}
+for (j in seq(docs)){ 
+  docs[[j]] <- gsub('[[:punct:]]'," ",docs[[j]])
+}
+docs <- tm_map(docs, stripWhitespace)
+docs[[1]][2]
+```
+
+Que si parece haber funcionado.
+
+Un concepto muy interesante es el del __*stemming*__, que es convertir todas las palabras con raíz común a una sola, por ejemplo, palabras como response, responsive, responsible, etc serán convertidas a respons. No es la palabra original, pero para nuestro análisis es idóneo ya que hace que palabras que representan el mismo concepto tan solo estén representadas por una palabra. El resultado de aplicar la fución *stemDocument* nos deja los documentos en un estado casi ideal para comenzar con el minado en si mismo:
+
+```{r}
+docs <- tm_map(docs, stemDocument)
+docs[[1]][2]
+```
+
+Como se ve que la eliminación de números realizada antes no ha sido efectiva del todo, pruebo con de otra forma, mediante la expresión regular apropiada. El restuldado, como se ve, es más efectivo:
+
+```{r}
+for (j in seq(docs)){ 
+  docs[[j]] <- gsub('[0-9]'," ",docs[[j]])
+}
+docs <- tm_map(docs, stripWhitespace)
+docs[[1]][2]
+```
+
+Por otro lado me doy cuenta de que hay, con cierta frecuencia, palabras de una sola letra o dos, que sin duda provienen de las transformaciones anteriores (se repite mucho 'g', 's', por ejemplo). Las vamos a eliminar también, ya que no aportarán nada:
+
+```{r}
+for (j in seq(docs)){ 
+  docs[[j]] <- gsub('\\b[A-Za-z]{1,2}\\b'," ",docs[[j]])
+}
+docs <- tm_map(docs, stripWhitespace)
+docs[[1]][2]
+```
+
+En este punto, parece que el estado es perfecto para comenzar con la minería de texto como tal.
+
+> ## 3. Minería de texto
+
+Lo primero que haremos para comenzar con la minería en si misma, es obtener la matriz de términos de documentos, que nos da, para cada documento, la aparición o no de una determinada palabra. Previamente, convertimos a texto plano (**PlainTextDocument**):
+
+```{r}
+docsPlainText <- tm_map(docs, PlainTextDocument)
+dtm <- DocumentTermMatrix(docsPlainText)
+dtm
+class(dtm)
+```
+Podemos figurarnos mejor qué contiene esta estructura con el comando **str**:
+
+```{r}
+str(dtm)
+```
+
+Es decir, tenemos 17 filas, una por documento, y 5175 columnas, una por término, los cuales a su vez son cadenas de caracteres, esto es, palabras. Además, podemos ver con qué frecuencia paarece cada palabra (suma de los valores de las columnas):
+
+```{r}
+freq <- colSums(as.matrix(dtm))
+length(freq)
+ord <- order(freq)
+```
+
+A partir del vector ordenado por frecuencias, podemos ver los términos más frecuentes:
+
+```{r}
+tail(freq[ord])
+```
+
+Una vez que tenemos la matriz recien obtenida, es interesante eliminar los elementos dispersos, es decir, se eliminan los datos, que por ejemplo, no superen el 10% de apariciones:
+
+```{r}
+noSparseTerms <- removeSparseTerms(dtm, 0.1)
+noSparseTermsFreq <- colSums(as.matrix(noSparseTerms))
+length(noSparseTermsFreq)
+noSparseTermsFreqOrd <- order(noSparseTermsFreq)
+tail(noSparseTermsFreq[noSparseTermsFreqOrd])
+```
+
+Si visualizamos los 73 términos resultantes tras eliminar los dispersos:
+
+```{r}
+noSparseTermsFreq
+```
+
+Hay términos que deberían unificarse como uno solo. En este caso, solo se da esto en un caso: __*scientif*__ y __*scientist*__, que podríamos cambiar por science, de forma que el concepto quede unificado. Para hacer esto, el proceso sería sustituir ambos términos por science en todos los documentos. Ademñas, las palabras can, just, one, see, set, two y use no me parecen muy intresantes, así que las eliminaremos de los documentos originales:
+
+```{r}
+for (j in seq(docs)){
+  docs[[j]] <- gsub("scientif", "science", docs[[j]])
+  docs[[j]] <- gsub("scientist", "science", docs[[j]])
+}
+
+docs <- tm_map(docs, removeWords, c("can", "just", "one", "see", "set", "two" , "use"))
+```
+
+Y ahora, tendríamos que repetir todo el proceso posterior:
+ 
+```{r}
+docsPlainText <- tm_map(docs, PlainTextDocument)
+dtm <- DocumentTermMatrix(docsPlainText)
+noSparseTerms <- removeSparseTerms(dtm, 0.1)
+noSparseTermsFreq <- colSums(as.matrix(noSparseTerms))
+noSparseTermsFreq
+```
+ 
+Donde vemos que ahora aparece science donde antes aparecían dos términos muy relacionados, haciendo referencia precisamente al concepto ciencia.
+
+> ## 4. Análisis gráfico de los resultados
+
+Una vez tenemos los datos que nos interesan, vamos a manipularlos para interpertarlos gráficamente, lo cual es nos dará una visión global muy fácil de interpretar,
+
+Por ejemplo, podemos visualizar gracias a ggplot la frecuencia de los términos más importantes (solo los que tienen una frecuencia superior a por ejemplo, 150)
+
+```{r}
+freqTerms <- findFreqTerms(noSparseTerms, lowfreq=150)
+freqTerms
+```
+También podemos almacenar en un *data frame* los datos:
+```{r}
+wf <- data.frame(word=names(noSparseTermsFreq), freq=noSparseTermsFreq)
+wf
+```
+
+lo cual nos permite a continuación, usar la libreria **ggplot**:
+
+```{r}
+library(ggplot2)
+p <- ggplot(subset(wf, freq>150), aes(word, freq))
+p <- p + geom_bar(stat="identity")
+p <- p + theme(axis.text.x=element_text(angle=45, hjust=1))
+p
+
+```
+
+Como se puede comprobar, los término relativos a Alzheimer, cuidados, demencia, enfermedad son los más frecuentes, y que nos da la misma información que la gráfica anterior pero con otra forma muy característica:
+
+Por último podemos obtener una nube de palabras, muy atractiva visualmente con muy pocos comandos:
+
+```{r}
+library(wordcloud)
+set.seed(234)
+dark2 <- brewer.pal(6, "Dark2")
+wordcloud(names(noSparseTermsFreq), noSparseTermsFreq, min.freq=125)
+
+```
+
+
+Se podrían sustituir estos términos por otros completos, esto es, por ejemplo *diseas* por *disease*, *alzheim* por *alzheimer*,*studi* por *study*, etc. Pero esto ya sabemos como realizarlo, se ha explicado anteriormente así que tan solo sería repetir el proceso para obtener al final las palabras deseadas.

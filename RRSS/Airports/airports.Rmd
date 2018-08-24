@@ -1,0 +1,346 @@
+
+---
+title: "Airports"
+author: "Jose Antonio González Doñas"
+date: "30 de mayo de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Análisis de Redes Sociales - USairports
+
+En primer lugar cargamos las librerías necesarias y que previamente deben ser instaladas. Usaremos los datos del grafo **USairports**, que está incluido en la librería **igraphdata**
+
+```{r}
+library(igraph)
+library(igraphdata)
+data("USairports")
+```
+
+
+###1.Visualizar el grafo.
+
+Podemos usar la ya conocida función **plot**, que sirve para la mayoría de estructuras que nos encontremos en R:
+
+```{r}
+plot(USairports)
+```
+
+Algunas alternativas son (realmente **plot.igraph** usa internamente **plot**, por lo que el resultado será el mismo):
+
+```{r}
+plot.igraph(USairports)
+```
+
+Si tenemos instalado **tcltk** podemos genera un gráfico interactivo con bastante opciones de visualziación, usando:
+
+```{r eval=F}
+tkplot(USairports)
+```
+
+Existe incluso una opción (experimental) que permite la visualización 3D:
+
+```{r eval=F}
+rgplot(USairports)
+```
+
+###2.Extraer los vértices.
+
+Usamos para ello la función **V**:
+
+```{r}
+vertices <- V(USairports)
+```
+
+###3.Extraer los arcos.
+
+Existe una función equivalente a la anterior para los arcos (*edges*) llamada **E**.
+
+```{r}
+edges <- E(USairports)
+length(edges)
+```
+
+
+###4.Eliminar la conexión entre BJC y MIA.
+
+Para ello, aunque con toda seguridad hay más modos de hacerlo, podemos hacer uso del operador "-" y eliminar el arco entre esas ciudades. Para comprobar que efectivamente lo elimina, comprobamos el número de aristas del grafo tras la eliminación, y vemos que efectivamente hay uno menos.
+
+```{r}
+USairports <- USairports - edge("BJC|MIA")
+edges <- E(USairports)
+length(edges)
+```
+De todas formas, si comprobamos los enlaces entre estos dos aeropuertos, veremos que tan solo hemos eliminado el que va desde "BJC" hacia "MIA", pero no el que va de "MIA" hacia "BJC":
+
+```{r}
+E(USairports)["BJC" %--% "MIA"] 
+```
+
+Así que podemos eliminarlo, haciendo uso de esa forma de acceder a arcos:
+
+```{r}
+USairports <- USairports - E(USairports)["BJC" %--% "MIA"] 
+```
+
+Y finalmente vemos como ya no hay ninguna conexión entre esos aeropuertos:
+
+```{r}
+E(USairports)["BJC" %--% "MIA"] 
+```
+
+
+###5.Encontrar las conexiones desde BOS.
+
+De este modo parece ser que obtenemos todos los aeropuertos de destino desde Boston, es decir, los vértices a los que está conectado el aeropuerto de Boston:
+```{r}
+fromBoston <- USairports[["BOS"]]
+fromBoston
+```
+
+Que además, parece coincidir con ésta otra forma, aunque en este caso lo que obtenemos son las conexiones completas, esto es, los nodos origen y destino unidos por el arco correspondiente:
+
+```{r}
+fromBoston2 <- E(USairports)["BOS" %->% V(USairports)]
+unique(fromBoston2) 
+```
+
+
+###6.Ejecutar los siguientes comandos sobre el grafo: graph_attr, vertex_attr_names, vertex_attr, edge_attr_names, edge_attr
+
+* **graph_attr** nos dice los atributos asignados a un grafo. En este caso, contiene un atributo llamado nombre que contiene el nombre del grafo en si, que es:
+
+```{r}
+graph_attr(USairports)
+```
+* **vertex_attr_names** contiene los atributos que contiene cada nodo del grafo. Como en este caso un nodo representa a un aerotpuerto, tenemos los atributos correspondientes a nombre, ciudad y posición geográfica:
+
+```{r}
+vertex_attr_names(USairports)
+```
+
+* **vertex_attr** nos permite, para todos los atributos existentes en la estructura a la que representa el grafo, obtener todos los valores. En otras palabras, para nuestro grafo de aeropuertos de estados unidos, y como en total hay unos 755 aeropuertos, obtendremos los nombres de aeropuerto, ciudad y localización geográfica de todos esos aeropuertos. 
+
+```{r}
+vertex_attr(USairports)
+```
+
+Si no queremos visualizar todos los atributos, podemos especificar uno en concreto. Lo mismo si solo queremos visualizar los atributos de algunos vértices en concreto:
+
+```{r}
+vertex_attr(USairports, name="City", index=c("BOS","MIA"))
+```
+
+
+* **edge_attr_names** nos aporta información sobre los atributos que hay almacenados en las aristas o arcos. En este caso, una arista representa una conexión entre aeropuertos, y por ello contienen información de la compañia aerea que la ofrece, las salidas, los asientos, los pasajeros, el avión usado y la distancia entre ambos aeropuertos.
+
+```{r}
+edge_attr_names(USairports)
+```
+
+* **edge_attr** al igual que ocurría con **vertex_attr**, obtendremos los valores asignados a todos los atributos de todos los arcos, lo cual, como ocurre en este caso, puede ser un montón de información. Por ello podríamos limitar la información a mostrar, indicando el o los arcos a mostrar y los atributos que queremos obtener. En este caso, solo muestro el nombre de la compañía aerea:
+
+```{r}
+edge_attr(USairports,name="Carrier")
+```
+
+###7.Usar función V para acceder a los v?rtices del grafo. Visualizar los cinco primeros vértices.
+
+Esto ya lo hemos hecho anteriormente, así que tan solo tendríamos que visualizar los 5 primeros:
+
+```{r}
+vertices <- V(USairports)
+vertices[0:5]
+```
+
+
+###8.Usar función E para acceder a los arcos del grafo. Visualizar los cinco primeros arcos.
+
+Exactamente lo mismo que el ejercicio anterior:
+
+```{r}
+edges <- E(USairports)
+edges[0:5]
+```
+
+
+###9.Ver todas las propiedades (atributos) de los vértices de los cinco primeros aeropuertos. 
+
+Como expliqué anteriormente, la función **vertex_attr** nos permite visualizar los atributos que deseemos indicando los índices de aquellos que nos interesan. En este caso, indicaremos los índices 1 a 5:
+
+```{r}
+vertex_attr(USairports, index=1:5)
+```
+
+###Extraer la ciudad del primer aeropuerto.
+
+Aplicamos exactamente el mismo razonamiento que en el ejercicio anterior, pero con los parámetros apropiados
+
+```{r}
+vertex_attr(USairports, name="City", index=1)
+```
+ En este caso es importante saber cómo es representado un aeropuerto (en este caso, mediante los nodos) y cuales son los atributos disponibles.
+
+
+###10.Analizar qué hace la siguiente orden:
+
+```{r eval=F}
+V(USairports)$Group <-sample(c("A","B"), vcount(USairports), replace=TRUE)
+```
+
+Para cada nodo de nuestro grafo de aeropuertos, añade un nuevo campo llamado "Group", que será o A o B y que en este caso simplemente se asigna de forma aleatoria, ya que eso es básicamente como trabaja la función **sample**
+
+###11.Analizar qué hacen las siguientes órdenes:
+
+```{r eval=F}
+#Selector de arcos:  $\%--\%$ para acceder a los arcos entre dos vértices. 
+E(USairports)["JFK" %--% "BOS"] 
+# Si los arcos son dirigidos
+unique(E(USairports)["JFK" %->% "BOS"]$Carrier) 
+```
+
+Con la primera instrucción conseguimos obtener un suconjunto de todos los arcos que cumplen la condición dada. En este caso, con el operador **%--%** lo que obtenemos son todos los arcos que unen vértices con esas etiquetas, sin importar la dirección de los arcos que los unen. En este caso, teniendo en cuenta el significado de vértices y arcos, lo que obtendremos será todas las conexiones entre el aeropuerto JFK de Nueva York y el aeropuerto BOS de Boston.
+
+En el segundo ejemplo, cribamos según la dirección de las conexiones, esto es, la dirección de los arcos, y además nos quedamos con el nombre de la compañía aerea que realiza esas conexiones. Para no obtener resultados repetidos, se aplica por último la función **unique**, que elimina duplicidades.
+
+
+###12.Analizar qué hacen las siguientes órdenes:
+
+```{r eval=F}
+#Los selectores se pueden usar entre grupos de  vértices. 
+#Todos los vuelos de  California a New York # Buscar patrón (grep -pattern matching), el código de estado de el código de la ciudad 
+inCal <- grepl("CA$", V(USairports)$City)
+inNy <- grepl("NY$", V(USairports)$City)
+
+# Arcos de   CA a NY
+E(USairports)[V(USairports)[inCal] %->% V(USairports)[inNy]]
+```
+
+Con estas órdenes lo que hemos obtenido es, usando las expresiones regulares, los nombres de las ciudades que pertenecen al estado de California, ya que los nombres de las ciudades contienen además, la abreviatura del estado al que pertenecen, siendo el código de California "CA". Por otra parte, hemos hecho lo mismo con los aeropuertos de Nueva York, con código NY.
+
+Finalmente, hemos obtenido todas las conexiones entre ambos estados, obteniendo el subconunto de los arcos (conexiones aereas) que cumplen que vayan desde California hacia Nueva York.
+
+###13.Analizar qué hacen las siguientes órdenes:
+```{r}
+# Extraer todos los vecinos de un vértice particular a una distancia $d$:
+# Vértices a distancia 2 de JFK y  LAX
+d2Vertices <- ego(USairports, nodes = c("JFK","LAX"), order=2)
+# Vecinos de un vértice como un nuevo gr?fico 
+JFKNet <- make_ego_graph(USairports, nodes = "JFK", order=2) 
+```
+
+Con la función **ego**, lo que obtenemos es un conjunto de vértices que se encuentran a una distancia máxima de la indicada en el parámetro **order**. Es decir, en **d2Vertices** tendremos todos los aeropuertos accesibles desde JFK y LAX en los que como mucho, habría un trasbordo. El resultado nos separa el resultado en dos campos distintos, uno por aeropuerto.
+
+Con la segunda instrucción, obtenemos un grafo a partir de los vecinos obtenidos en el paso anterior. En ese caso se hace solo para JFK, y la distancia máxima sigue siendo dos. Por ejemplo, podríamos representar gráficamente ese nuevo nodo:
+
+```{r}
+plot.igraph(JFKNet[[1]])
+```
+
+###14.Pasar el grafo a un dataframe.
+
+Como ya hemos visto anteriormente con otras muchas estructuras de datos, el paso de un tipo a otro es muy simple. Podemos usar **as_data_frame**, al que le pasamos el propio grafo y el qué queremos convertir, pudiendo elegir solo vértices, sólo arcos, o ambos, como es mi caso:
+
+
+```{r}
+data.frame <- as_data_frame(USairports, what = "both")
+head(data.frame)
+```
+
+
+###15.Pasar el grafo a una matriz y encontrar los aeropuertos conectados por tres escalas. Guardar en un grafo y visualizarlo.
+
+Si pasamos el grafo en una matriz de adyacencia, tendremos una matrix donde por cada par de aeropuertos, nos indica cuántas conexiones hay entre ellos:
+
+```{r}
+matrix <- as_adjacency_matrix(USairports, sparse = T)
+matrix
+```
+
+Como podemos ver, para cada par de aeropuertos nos indica el número de conexiones entre ellos, pero para este caso sólo nos interesa saber cuales están conectados, sin importar si el número de conexiones es sólo una o varias. Por ello, sustituiremos todos los valores por 1. Esto lo podemos conseguir de éste modo:
+
+```{r}
+matrix[matrix > 1] <- 1
+matrix
+```
+
+Ahora, si multiplicamos la matrix por si misma, obtendremos la matrix de adyacencia en la que tendremos un 1 donde exista conexión entre dos aeropuertos mediante una conexión intermedia. Si repetimos el proceso, tendremos una matriz donde se muestren las conexiones entre aeropuertos con dos trasbordos, que es lo que pide el enunciado:
+
+```{r}
+matrix <- matrix %*% matrix
+matrix[matrix > 1] <- 1
+
+matrix <- matrix %*% matrix
+matrix[matrix > 1] <- 1
+```
+
+Por último podemos convertir a grafo de nuevo y visualizarlo. Es un grafo con muchísimas conexiones, por lo que tardará mucho en ser mostrado gráficamente:
+
+```{r}
+graph <- graph_from_adjacency_matrix(matrix)
+```
+
+```{r eval=F}
+plot(graph)
+```
+
+###16.Aplicar a este grafo, las órdenes que se han visto en las sesiones anteriores: tama?o, di?metro, clustering, transitividad, etc. (los camomandos que se buscaron en la documentaci?n de igraph en la sesi?n anterior y los que aparecen en los documentos entregaodos anteriormente).
+
+Muchas de las funciones vistas en ese trabajo ya han sido usadas aquí. Mencionaremos algunas de las que no han sido mencionadas, sin explicar nada a fondo ya que se hizo en dicho trabajo.
+
+####Conectividad del grafo de aeropuertos
+
+En cuanto a la conectividad, podemos obtener información de muchos aspectos de esta cualidad, ya que puede ser entendidad desde muchos puntos de vista:
+
+* conectividad de las aristas, también llamado "adhesion de grupo" según la documentación. Estas dos funciones son realmente la misma:
+
+```{r}
+adhesion(USairports)
+edge.connectivity(USairports)
+```
+
+* Cálculo de los componentes maximales de un grafo (esto se basa por supuesto en conectividad). Ambas funciones son realmente la misma
+
+```{r}
+cluster.distribution(USairports)
+clusters(USairports)
+```
+
+* Componentes conectados de un grafo:
+
+```{r}
+components(USairports)
+```
+
+* Por último, **transitivity** nos da una medida de la probabilidad de que nodos adyacentes de otro nodo estén conectados. A esto se le llama "coeficiente de agrupación" (*clustering coefficient*)
+
+```{r}
+transitivity(USairports)
+```
+
+Existen hata un total de 17 funciones que hacen referencia a la conectividad, así que seguro que en cualquier caso se encuentra la más apropiada para cada situación.
+
+####Adyacencia en el grafo de aeropuertos
+
+* Obtener los adyacentes de un conjunto de vértices con **adjacent_vertices**, es decir, para un aeropuerto dado, los destinos directos mediante conexión única sin trasbordos:
+
+```{r}
+vertices <- c("BOS","JFK")
+adjacent_vertices(USairports,vertices)
+```
+
+* Saber si dos vértices están conectados o no (indicamos la etiqueta de los vértices, que en este caso son números):
+
+```{r}
+are.connected(USairports, "BOS", "MIA")
+are_adjacent(USairports, "MIA", "JFK")
+```
+
+* Obtener una matriz de adyacentes a partir de un grafo (puede ser muy útil)
+
+```{r}
+as_adj(USairports)
+```

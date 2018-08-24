@@ -1,0 +1,107 @@
+---
+title: "Ejercicio 3 con protein.csv"
+author: "Jose Antonio Gonzalez Doñas"
+date: "21 de mayo de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###Buscad información de los paquetes **cluster**, **fpc**. Explicad características relacionadas con visualización. Usad los comandos en el presente ejercicio.
+
+Cargamos los datos:
+
+```{r}
+library(readr)
+protein <- read_csv("protein.csv")
+head(protein)
+```
+
+Como se puede comprobar, para una serie de países, se ofrece la información (me imagino) de consumo de ciertos alimentos ricos en proteínas.
+
+Importante hacer notar que son datos numéricos que están dentro de una misma escala (valores entre 0 60, aproximadamente), lo cual es imprescindible para las técnicas de *clustering*.
+
+Para poder hablar de estos paquetes, es buena idea instalarlos y cargarlos previamente:
+
+```{r}
+install.packages("cluster")
+library(cluster)
+
+install.packages("fpc")
+library(fpc)
+```
+
+Según podemos obtener de la propia documentación **cluster** no es más que una librería de funciones dedicadas al tema de la obtención de clusters, completando las funcionalidades que podamos encontrar en otros paquetes. Contiene por supuesto funciones para la agrupación de datos, así como la visualización de dichas agrupaciones o la obtención de "sumarios" de dichas agrupaciones.
+
+Un ejemplo sería usar la función **agnes**, y su posterior visualización gráfica mediante plot, que directamente nos muestra el dendrograma:
+
+```{r}
+a <- agnes(protein)
+plot(a)
+```
+
+
+**fpc** es otro paquete similar: más funciones para hacer *clustering*, extraer información de las agrupaciones, y graficarlas, así como funciones de predicción.
+
+**fpc** permite, por ejemplo, ejecutar la función **k-means** pero con la vdentaja que de automáticamente inicializa el algoritmo varias veces en puntos aleatorios, con lo que el resultado final obtenido es mucho más robusto que si usamos la función **k-means**. En este caso vamos probar, en una sola ejecución, desde 2 hasta 5 agrupaciones. No ejecutaremos esta función por que hace que el sistema se cuelgue, aún con valores bajos para tosos sus parámetros:
+
+```{r eval=F}
+r <- kmeansruns(protein, krange = 2:5,iter.max=5,runs=5)
+```
+
+Si quisieramos mostrar una gráfica de los clusters obtenidos, tan solo tendríamos que usar la función plotcluster, o incluso indicar el parametro "plot=TRUE" en la propia función **kmeansruns**.
+
+Para ambos paquetes hemos mostrado un par de ejemplos, pero en la documentación hay docenas de funciones de todo tipo, por supuesto no podemos mostrarlas aquí todas, pero queda constancia de su funcionalidad.
+
+###El paquete **fpc** permite comparar la similaridad de dos agrupaciones distintas realizadas sobre un mismo dataset. Buscad información, explicad, aplicad.
+
+Investigando en la documentación, se puede ver que hay un par de funciones que pueden realizar estas funciones de comparación. Por un lado **cluster.stats** y por otro **cluster.varstats**. 
+
+**cluster.stats** recibe el vector de distancias que ya sabemos como obtener, así como las dos agrupaciones ya realizadas anteriormente. y devuelve un objeto con estadísticas que incluye, por ejemplo, el número de casos, clusters, una variable llamada "ruido", los diámetros de los clusters, la entropía, y otras muchas variables. No es recomendable su uso con datasets muy grandes, según la documentació, ya que procesa una matriz de disimilitudes completa.
+
+
+Un ejemplo que parece funcionar (no me es posible con el dataset de proteínas) es:
+
+```{r}
+set.seed(20000)
+options(digits=3)
+face <- rFace(200,dMoNo=2,dNoEy=0,p=2)
+dface <- dist(face)
+complete3 <- cutree(hclust(dface),3)
+cluster.stats(dface,complete3, alt.clustering=as.integer(attr(face,"grouping")))
+```
+
+**clustyer.varstats** hace algo similar, pero **trata las variables por separado**, no todo en conjunto:
+
+```{r}
+require(MASS)
+require(flexmix)
+data(Cars93)
+Cars934 <- Cars93[,c(3,5,8,10)]
+cc <- discrete.recode(Cars934,xvarsorted=FALSE,continuous=c(2,3),discrete=c(1,4))
+fcc <- flexmix(cc$data~1,k=2,
+model=lcmixed(continuous=2,discrete=2,ppdim=c(6,3),diagonal=TRUE))
+cv <-cluster.varstats(fcc@cluster,Cars934, contdata=Cars934[,c(2,3)],
+tablevar=c(1,4),catvar=c(2,3),quantvar=c(2,3),projmethod="awc", ask=FALSE)
+print(cv)
+```
+
+
+###Investigad cómo encontrar el número de *clusters* óptimo (opcional). Aplicadlo al dataset. Explicad.
+
+ESto se puede conseguir con la función **nselectboot** del paquete **cluster**. El resultado de aplicar esta función contiene un campo llamado **kopt** que nos indica precisamente cual es ese número óptimo de clusters óptimo:
+
+```{r}
+set.seed(20000)
+face <- rFace(50,dMoNo=2,dNoEy=0,p=2)
+nselectboot(dist(face),B=2,clustermethod=disthclustCBI,
+method="average",krange=5:7)
+nselectboot(dist(face),B=2,clustermethod=claraCBI,
+classification="centroid",krange=5:7)
+res <- nselectboot(face,B=2,clustermethod=kmeansCBI,
+classification="centroid",krange=5:7)
+res$kopt
+```
+

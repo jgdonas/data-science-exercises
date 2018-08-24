@@ -1,0 +1,120 @@
+---
+title: "Ejercicio k-means"
+author: "Jose Antonio Gonzalez Doñas"
+date: "19 de mayo de 2018"
+output: html_document
+---
+
+##Importad el dataset y visualizad las 5 primeras filas. Mirad la estructura del dataset. Analizad la información que contiene.
+
+Importamos el dataset. Como siempre, la ruta dependerá de donde se encuentre almacenado (en este caso está en la raíz de la carpeta del proyecto):
+
+```{r}
+library(readr)
+unempstates <- read_csv("unempstates.csv")
+View(unempstates)
+```
+
+Como se puede ver, en este caso cada fila es un periodo de tiempoy cada columna es un estado: tendremos que transponer la estructura para tenerla como es neceario para aplicar el algoritmo k-means:
+
+```{r}
+head(unempstates)
+```
+
+Se muestra los datos traspuestos, tan solo las 15 primeras mediciones para que la visualización no se distorsione:
+
+```{r}
+unempstates <- t(unempstates)
+head(unempstates[,1:15])
+```
+
+Tenemos pues que cada fila contiene los datos porcentuales del paro para una serie de mediciones temporales (valores decimales), cuyo periodo desconocemos. En cualquier caso, si queremos saber cuántos estados y cuántas mediciones de paro hay, se puede comprobar fácilmente:
+
+```{r}
+dim(unempstates)
+```
+
+Es decir, hay 416 mediciones para 50 estados.
+
+##Haced un gráfico con distintos colores que visualice la evolución del paro para los 3 primeros estados.
+
+Si queremos visualizar la evolución del paro de los 3 primeros estados (Alabama, Alaska y Arizona), tan solo tenemos que hacer uso de nuestra librería de gráficos preferida, en mi caso usaré ggplot2:
+
+```{r}
+library(ggplot2) 
+alabama <- unempstates[1,]
+alaska <- unempstates[2,]
+arizona <- unempstates[3,]
+x <- 1:dim(unempstates)[2]
+ggplot() +
+  geom_line(aes(x=x, y = alabama, colour = "Alabama")) +
+  geom_line(aes(x=x, y = alaska, colour = "Alaska")) +
+  geom_line(aes(x=x, y = arizona, colour = "Arizona")) +
+  ggtitle("Evolución del paro en Alabama, Alaska y Arizona") +
+  xlab("Tiempo") + ylab("Porcentaje paro")
+
+```
+
+Como se peude ver, más o menos tienen una evolución parecida, donde en las primeras y últimas mediciones el paro era más alto, mientras que en las mediciones centrales parecía que la situación de apro era mejor.
+
+##Aplicad k-means para hacer clustering de los estados según la evolución del paro. Agrupad en 2 clusters y guardar en un dataset el estado junto con el grupo. Cread una tabla con cada estado junto con su grupo. ¿Cuántos estados hay en cada grupo?
+
+Tal y como pide el enunciado, vamos a aplicar el algoritmo kmeans para k=2. Previamente, como el algoritmo hace uso de números aleatorios, vamos a hacer reproducible la ejecución estableciendo una semilla concreta:
+
+```{r}
+k<-2
+set.seed(1)
+two.means <- kmeans(unempstates, k, iter.max = 10, nstart = 1)
+```
+
+Como la estrucutura de datos resultante de aplicar el algoritmo no deja extraer el grupo que se la ha asignado a cada estado, vamos a crear una función que se encargue de ello (hago esto porque si usamos directamente el campo clusters del objeto que devuelve la función, vamos a tener repetido dos veces el identificador del estado):
+
+```{r}
+getClusterNumber <- function(cluster){
+    v <- vector(mode = "numeric", length = 0)
+    for(i in 1:length(cluster)){
+      v <- c(v,cluster[[i]])
+    }
+    v
+}
+
+two.dataframe <- data.frame(state = names(two.means$cluster), cluster = getClusterNumber(two.means$cluster))
+two.dataframe
+```
+
+Si como nos pide el enunciado, queremos saber cuántos estados hay en cada cluster, tan solo tenemos que usar la función table con el objeto obtenido, directamente. No es necesario lo hecho anteriormente para nada:
+
+```{r}
+table(two.means$cluster)
+```
+
+Es decir, hay 20 elementos en el cluster numero 1 y 30 en el cluster número 2.
+
+##Aplicad k-means para hacer clustering de los estados según la evolución del paro. Agrupad en 3 clusteres y guardad en un dataset el estado junto con el grupo. Crear una tabla con cada estado junto con su grupo. ¿Cuántos estados hay en cada grupo?
+
+Repetimos todo lo anterior, pero para k=3:
+
+```{r}
+k<-3
+set.seed(1)
+three.means <- kmeans(unempstates, k, iter.max = 10, nstart = 1)
+three.dataframe <- data.frame(state = names(three.means$cluster), cluster = getClusterNumber(three.means$cluster))
+three.dataframe
+table(three.means$cluster)
+```
+
+Es decir, en el primer cluster hay 28, en el segundo 17, y en el tercero hay 5. Es decir, hay un gran desequilibrio entre el número de elementos de los distintos clusters.
+
+##Aplicad k-means para hacer clustering de los estados según la evolución del paro. Agrupad en 4 clusters y guardad en un dataset el estado junto con el grupo. Cread una tabla con cada estado junto con su grupo. ¿Cuántos hay en cada grupo?
+
+Repetimos de nuevo lo mismo que en los dos ejercicios anteriores, con k=4:
+
+```{r}
+k<-4
+set.seed(1)
+four.means <- kmeans(unempstates, k, iter.max = 10, nstart = 1)
+four.dataframe <- data.frame(state = names(four.means$cluster), cluster = getClusterNumber(four.means$cluster))
+four.dataframe
+table(four.means$cluster)
+```
+
